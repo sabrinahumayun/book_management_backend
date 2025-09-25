@@ -28,6 +28,20 @@ export class LoginDto {
   password: string;
 }
 
+export class UpdateProfileDto {
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+}
+
 export class AuthResponseDto {
   access_token: string;
   message: string;

@@ -1,6 +1,6 @@
-import { Controller, Post, Body, UseGuards, Get, Request } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Request, Put } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, AuthResponseDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, AuthResponseDto, UpdateProfileDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
@@ -25,6 +25,17 @@ export class AuthController {
   getProfile(@Request() req: any) {
     const { password, ...userWithoutPassword } = req.user;
     return userWithoutPassword;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('profile')
+  async updateProfile(@Request() req: any, @Body() updateProfileDto: UpdateProfileDto) {
+    const updatedUser = await this.authService.updateProfile(req.user.id, updateProfileDto);
+    const { password, ...userWithoutPassword } = updatedUser;
+    return {
+      message: 'Profile updated successfully',
+      user: userWithoutPassword,
+    };
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

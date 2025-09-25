@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User, UserRole } from './entities/user.entity';
-import { RegisterDto, LoginDto, AuthResponseDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, AuthResponseDto, UpdateProfileDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -89,5 +89,27 @@ export class AuthService {
   async validateUserById(id: number): Promise<User | null> {
     console.log("id", id);
     return this.userRepository.findOne({ where: { id } });
+  }
+
+  async updateProfile(userId: number, updateProfileDto: UpdateProfileDto): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Check if email is being updated and if it already exists
+    if (updateProfileDto.email && updateProfileDto.email !== user.email) {
+      const existingUser = await this.userRepository.findOne({ 
+        where: { email: updateProfileDto.email } 
+      });
+      if (existingUser) {
+        throw new ConflictException('Email already exists');
+      }
+    }
+
+    // Update only provided fields
+    Object.assign(user, updateProfileDto);
+    
+    return this.userRepository.save(user);
   }
 }
