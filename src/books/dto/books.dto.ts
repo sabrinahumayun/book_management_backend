@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, MinLength, MaxLength, IsOptional, IsISBN, IsInt, Min, Max, IsPositive } from 'class-validator';
+import { IsString, IsNotEmpty, MinLength, MaxLength, IsOptional, IsISBN, IsInt, Min, Max, IsPositive, IsArray, ArrayNotEmpty } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -137,4 +137,18 @@ export class PaginatedBooksResponseDto {
 
   @ApiProperty({ example: 3, description: 'Total number of pages' })
   totalPages: number;
+}
+
+export class BulkDeleteBooksDto {
+  @ApiProperty({ 
+    example: [1, 2, 3], 
+    description: 'Array of book IDs to delete',
+    type: [Number]
+  })
+  @IsArray()
+  @ArrayNotEmpty()
+  @Type(() => Number)
+  @IsInt({ each: true })
+  @IsPositive({ each: true })
+  bookIds: number[];
 }

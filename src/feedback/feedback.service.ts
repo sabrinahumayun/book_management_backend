@@ -4,7 +4,8 @@ import { Repository, QueryFailedError } from 'typeorm';
 import { Feedback, FeedbackStatus } from './entities/feedback.entity';
 import { User } from '../auth/entities/user.entity';
 import { Book } from '../books/entities/book.entity';
-import { CreateFeedbackDto, ModerateFeedbackDto, UpdateFeedbackDto, ListFeedbackQueryDto, PaginatedFeedbackResponseDto, FeedbackResponseDto } from './dto/feedback.dto';
+import { CreateFeedbackDto, ModerateFeedbackDto, UpdateFeedbackDto, ListFeedbackQueryDto, PaginatedFeedbackResponseDto, FeedbackResponseDto, BulkDeleteFeedbackDto } from './dto/feedback.dto';
+import { BulkDeleteResponseDto } from '../auth/dto/auth.dto';
 
 @Injectable()
 export class FeedbackService {
@@ -226,6 +227,57 @@ export class FeedbackService {
         author: feedback.book.author,
         isbn: feedback.book.isbn,
       } : undefined,
+    };
+  }
+
+  async bulkDeleteFeedback(bulkDeleteDto: BulkDeleteFeedbackDto, userId: number, isAdmin: boolean = false): Promise<BulkDeleteResponseDto> {
+    const { feedbackIds } = bulkDeleteDto;
+    const deletedIds: number[] = [];
+    const failedIds: number[] = [];
+
+    // Use transaction for bulk operations
+    const queryRunner = this.feedbackRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const feedbackId of feedbackIds) {
+        try {
+          const feedback = await queryRunner.manager.findOne(Feedback, { 
+            where: { id: feedbackId },
+            relations: ['user']
+          });
+          
+          if (feedback) {
+            // Check ownership (users can only delete their own feedback, admins can delete any)
+            if (!isAdmin && feedback.userId !== userId) {
+              failedIds.push(feedbackId);
+              continue;
+            }
+
+            await queryRunner.manager.remove(Feedback, feedback);
+            deletedIds.push(feedbackId);
+          } else {
+            failedIds.push(feedbackId);
+          }
+        } catch (error) {
+          failedIds.push(feedbackId);
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+
+    return {
+      deletedCount: deletedIds.length,
+      deletedIds,
+      failedIds,
+      message: `Bulk delete completed. ${deletedIds.length} feedback deleted, ${failedIds.length} failed.`,
     };
   }
 }

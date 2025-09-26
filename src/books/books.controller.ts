@@ -9,13 +9,12 @@ import {
   Query, 
   UseGuards, 
   Request,
-  ParseIntPipe,
-  ValidationPipe,
-  UsePipes
+  ParseIntPipe
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { BooksService } from './books.service';
-import { CreateBookDto, UpdateBookDto, ListBooksQueryDto, BookResponseDto, PaginatedBooksResponseDto } from './dto/books.dto';
+import { CreateBookDto, UpdateBookDto, ListBooksQueryDto, BookResponseDto, PaginatedBooksResponseDto, BulkDeleteBooksDto } from './dto/books.dto';
+import { BulkDeleteResponseDto } from '../auth/dto/auth.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -23,7 +22,6 @@ import { UserRole } from '../auth/entities/user.entity';
 
 @ApiTags('Books')
 @Controller('books')
-@UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class BooksController {
   constructor(private readonly booksService: BooksService) {}
 
@@ -105,6 +103,20 @@ export class BooksController {
       message: 'Book updated successfully',
       book,
     };
+  }
+
+  @Delete('bulk')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Bulk delete books' })
+  @ApiResponse({ status: 200, description: 'Bulk delete operation completed', type: BulkDeleteResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  async bulkDeleteBooks(
+    @Body() bulkDeleteDto: BulkDeleteBooksDto,
+    @Request() req: any
+  ): Promise<BulkDeleteResponseDto> {
+    return this.booksService.bulkDeleteBooks(bulkDeleteDto, req.user.id, req.user.role);
   }
 
   @Delete(':id')
