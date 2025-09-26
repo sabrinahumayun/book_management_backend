@@ -4,7 +4,7 @@ import { Repository, QueryFailedError } from 'typeorm';
 import { Feedback, FeedbackStatus } from './entities/feedback.entity';
 import { User } from '../auth/entities/user.entity';
 import { Book } from '../books/entities/book.entity';
-import { CreateFeedbackDto, ModerateFeedbackDto, ListFeedbackQueryDto, PaginatedFeedbackResponseDto, FeedbackResponseDto } from './dto/feedback.dto';
+import { CreateFeedbackDto, ModerateFeedbackDto, UpdateFeedbackDto, ListFeedbackQueryDto, PaginatedFeedbackResponseDto, FeedbackResponseDto } from './dto/feedback.dto';
 
 @Injectable()
 export class FeedbackService {
@@ -145,6 +145,34 @@ export class FeedbackService {
     }
 
     feedback.status = moderateFeedbackDto.status;
+    const updatedFeedback = await this.feedbackRepository.save(feedback);
+
+    return this.mapToResponseDto(updatedFeedback);
+  }
+
+  async update(id: number, updateFeedbackDto: UpdateFeedbackDto, userId: number, isAdmin: boolean = false): Promise<FeedbackResponseDto> {
+    const feedback = await this.feedbackRepository.findOne({
+      where: { id },
+      relations: ['user', 'book'],
+    });
+
+    if (!feedback) {
+      throw new NotFoundException(`Feedback with ID ${id} not found`);
+    }
+
+    // Only allow users to update their own feedback or admins to update any feedback
+    if (!isAdmin && feedback.userId !== userId) {
+      throw new ForbiddenException('You can only update your own feedback');
+    }
+
+    // Update only provided fields
+    if (updateFeedbackDto.rating !== undefined) {
+      feedback.rating = updateFeedbackDto.rating;
+    }
+    if (updateFeedbackDto.comment !== undefined) {
+      feedback.comment = updateFeedbackDto.comment;
+    }
+
     const updatedFeedback = await this.feedbackRepository.save(feedback);
 
     return this.mapToResponseDto(updatedFeedback);

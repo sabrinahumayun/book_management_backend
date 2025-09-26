@@ -15,11 +15,12 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { FeedbackService } from './feedback.service';
-import { CreateFeedbackDto, ModerateFeedbackDto, ListFeedbackQueryDto, FeedbackResponseDto, PaginatedFeedbackResponseDto } from './dto/feedback.dto';
+import { CreateFeedbackDto, ModerateFeedbackDto, UpdateFeedbackDto, ListFeedbackQueryDto, FeedbackResponseDto, PaginatedFeedbackResponseDto } from './dto/feedback.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../auth/entities/user.entity';
+import { FeedbackThrottlerGuard } from './feedback-throttler.guard';
 
 @ApiTags('Feedback')
 @Controller('feedback')
@@ -28,13 +29,13 @@ export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, FeedbackThrottlerGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Create feedback for a book' })
+  @ApiOperation({ summary: 'Create feedback for a book (Rate limited: 1 per minute per user)' })
   @ApiResponse({ status: 201, description: 'Feedback created successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Book not found' })
-  @ApiResponse({ status: 409, description: 'You have already left feedback for this book' })
+  @ApiResponse({ status: 429, description: 'Too Many Requests - Rate limit exceeded (1 feedback per minute per user)' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
   async create(
     @Body() createFeedbackDto: CreateFeedbackDto,
@@ -140,6 +141,28 @@ export class FeedbackController {
     const feedback = await this.feedbackService.moderate(id, moderateFeedbackDto);
     return {
       message: 'Feedback moderated successfully',
+      feedback,
+    };
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Update feedback' })
+  @ApiResponse({ status: 200, description: 'Feedback updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - You can only update your own feedback' })
+  @ApiResponse({ status: 404, description: 'Feedback not found' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateFeedbackDto: UpdateFeedbackDto,
+    @Request() req: any
+  ): Promise<{ message: string; feedback: FeedbackResponseDto }> {
+    const isAdmin = req.user?.role === UserRole.ADMIN;
+    const feedback = await this.feedbackService.update(id, updateFeedbackDto, req.user.id, isAdmin);
+    return {
+      message: 'Feedback updated successfully',
       feedback,
     };
   }
