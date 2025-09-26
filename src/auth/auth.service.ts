@@ -54,12 +54,17 @@ export class AuthService {
     };
   }
 
-  async login(loginDto: LoginDto): Promise<AuthResponseDto> {
+    async login(loginDto: LoginDto): Promise<AuthResponseDto> {
     const { email, password } = loginDto;
     const user = await this.validateUser(email, password);
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Check if account is active
+    if (!user.isActive) {
+      throw new UnauthorizedException('Your account is suspended. Please contact admin.');
     }
 
     const payload = { email: user.email, sub: user.id, role: user.role };
@@ -111,4 +116,33 @@ export class AuthService {
     
     return this.userRepository.save(user);
   }
+
+  async findAllUsers(): Promise<User[]> {
+    return this.userRepository.find({
+      select: ['id', 'email', 'firstName', 'lastName', 'role', 'isActive', 'createdAt', 'updatedAt']
+    });
+  }
+
+  async updateUserByAdmin(userId: number, updateData: { firstName?: string; lastName?: string; role?: UserRole; isActive?: boolean }): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Update only provided fields
+    Object.assign(user, updateData);
+    
+    return this.userRepository.save(user);
+  }
+
+  async deleteUserByAdmin(userId: number): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Delete user - cascade will handle related data
+    await this.userRepository.remove(user);
+  }
+
 }
