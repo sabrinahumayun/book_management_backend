@@ -1,4 +1,5 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsEnum, IsBoolean } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsEnum, IsBoolean, IsArray, ArrayNotEmpty, IsInt, IsPositive } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole } from '../entities/user.entity';
 
@@ -129,4 +130,32 @@ export class AdminCreateUserDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+}
+
+export class BulkDeleteUsersDto {
+  @ApiProperty({ 
+    example: [1, 2, 3], 
+    description: 'Array of user IDs to delete',
+    type: [Number]
+  })
+  @IsArray()
+  @ArrayNotEmpty()
+  @Type(() => Number)
+  @IsInt({ each: true })
+  @IsPositive({ each: true })
+  userIds: number[];
+}
+
+export class BulkDeleteResponseDto {
+  @ApiProperty({ example: 3, description: 'Number of items successfully deleted' })
+  deletedCount: number;
+
+  @ApiProperty({ example: [1, 2, 3], description: 'Array of successfully deleted IDs' })
+  deletedIds: number[];
+
+  @ApiProperty({ example: [], description: 'Array of IDs that failed to delete' })
+  failedIds: number[];
+
+  @ApiProperty({ example: 'Bulk delete operation completed', description: 'Operation result message' })
+  message: string;
 }

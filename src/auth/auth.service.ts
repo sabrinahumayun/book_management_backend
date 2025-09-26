@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User, UserRole } from './entities/user.entity';
-import { RegisterDto, LoginDto, AuthResponseDto, UpdateProfileDto, AdminCreateUserDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, AuthResponseDto, UpdateProfileDto, AdminCreateUserDto, BulkDeleteUsersDto, BulkDeleteResponseDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -169,6 +169,94 @@ export class AuthService {
     });
 
     return this.userRepository.save(user);
+  }
+
+  async bulkDeleteUsers(bulkDeleteDto: BulkDeleteUsersDto): Promise<BulkDeleteResponseDto> {
+    const { userIds } = bulkDeleteDto;
+    const deletedIds: number[] = [];
+    const failedIds: number[] = [];
+
+    // Use transaction for bulk operations
+    const queryRunner = this.userRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const userId of userIds) {
+        try {
+          const user = await queryRunner.manager.findOne(User, { where: { id: userId } });
+          if (user) {
+            await queryRunner.manager.remove(User, user);
+            deletedIds.push(userId);
+          } else {
+            failedIds.push(userId);
+          }
+        } catch (error) {
+          failedIds.push(userId);
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+
+    return {
+      deletedCount: deletedIds.length,
+      deletedIds,
+      failedIds,
+      message: `Bulk delete completed. ${deletedIds.length} users deleted, ${failedIds.length} failed.`,
+    };
+  }
+
+  async deleteUserData(userId: number): Promise<BulkDeleteResponseDto> {
+    const deletedIds: number[] = [];
+    const failedIds: number[] = [];
+
+    // Use transaction for cascade deletion
+    const queryRunner = this.userRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Delete user's books
+      const booksResult = await queryRunner.manager.query(
+        'DELETE FROM books WHERE "createdBy" = $1',
+        [userId]
+      );
+      
+      // Delete user's feedback
+      const feedbackResult = await queryRunner.manager.query(
+        'DELETE FROM feedbacks WHERE "userId" = $1',
+        [userId]
+      );
+
+      // Delete the user
+      const user = await queryRunner.manager.findOne(User, { where: { id: userId } });
+      if (user) {
+        await queryRunner.manager.remove(User, user);
+        deletedIds.push(userId);
+      } else {
+        failedIds.push(userId);
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+
+    return {
+      deletedCount: deletedIds.length,
+      deletedIds,
+      failedIds,
+      message: `User data deletion completed. User and all related data deleted.`,
+    };
   }
 
 }

@@ -1,7 +1,7 @@
 import { Controller, Post, Body, UseGuards, Get, Request, Put, Patch, Param, ParseIntPipe, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, AuthResponseDto, UpdateProfileDto, AdminUpdateUserDto, AdminCreateUserDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, AuthResponseDto, UpdateProfileDto, AdminUpdateUserDto, AdminCreateUserDto, BulkDeleteUsersDto, BulkDeleteResponseDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
@@ -148,6 +148,19 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @Delete('users/bulk')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Bulk delete users (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Bulk delete operation completed', type: BulkDeleteResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  async bulkDeleteUsers(@Body() bulkDeleteDto: BulkDeleteUsersDto): Promise<BulkDeleteResponseDto> {
+    return this.authService.bulkDeleteUsers(bulkDeleteDto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
   @Delete('users/:id')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Delete user by admin' })
@@ -160,5 +173,18 @@ export class AuthController {
     return {
       message: 'User deleted successfully',
     };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Delete('users/:id/data')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Delete user and all related data (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User and all related data deleted successfully', type: BulkDeleteResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async deleteUserData(@Param('id', ParseIntPipe) userId: number): Promise<BulkDeleteResponseDto> {
+    return this.authService.deleteUserData(userId);
   }
 }
