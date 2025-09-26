@@ -9,13 +9,12 @@ import {
   Query, 
   UseGuards, 
   Request,
-  ParseIntPipe,
-  ValidationPipe,
-  UsePipes
+  ParseIntPipe
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { FeedbackService } from './feedback.service';
-import { CreateFeedbackDto, ModerateFeedbackDto, UpdateFeedbackDto, ListFeedbackQueryDto, FeedbackResponseDto, PaginatedFeedbackResponseDto } from './dto/feedback.dto';
+import { CreateFeedbackDto, ModerateFeedbackDto, UpdateFeedbackDto, ListFeedbackQueryDto, FeedbackResponseDto, PaginatedFeedbackResponseDto, BulkDeleteFeedbackDto } from './dto/feedback.dto';
+import { BulkDeleteResponseDto } from '../auth/dto/auth.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -24,7 +23,6 @@ import { FeedbackThrottlerGuard } from './feedback-throttler.guard';
 
 @ApiTags('Feedback')
 @Controller('feedback')
-@UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
@@ -165,6 +163,21 @@ export class FeedbackController {
       message: 'Feedback updated successfully',
       feedback,
     };
+  }
+
+  @Delete('bulk')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Bulk delete feedback' })
+  @ApiResponse({ status: 200, description: 'Bulk delete operation completed', type: BulkDeleteResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  async bulkDeleteFeedback(
+    @Body() bulkDeleteDto: BulkDeleteFeedbackDto,
+    @Request() req: any
+  ): Promise<BulkDeleteResponseDto> {
+    const isAdmin = req.user?.role === UserRole.ADMIN;
+    return this.feedbackService.bulkDeleteFeedback(bulkDeleteDto, req.user.id, isAdmin);
   }
 
   @Delete(':id')
