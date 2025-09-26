@@ -1,6 +1,6 @@
-import { Controller, Post, Body, UseGuards, Get, Request, Put } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Request, Put, Patch, Param, ParseIntPipe, Delete } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, AuthResponseDto, UpdateProfileDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, AuthResponseDto, UpdateProfileDto, AdminUpdateUserDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
@@ -57,6 +57,42 @@ export class AuthController {
     return {
       message: 'This endpoint is accessible to both users and admins',
       user: userWithoutPassword,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('users')
+  async getAllUsers() {
+    const users = await this.authService.findAllUsers();
+    return {
+      message: 'Users retrieved successfully',
+      users,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch('users/:id')
+  async updateUserByAdmin(
+    @Param('id', ParseIntPipe) userId: number,
+    @Body() updateUserDto: AdminUpdateUserDto
+  ) {
+    const updatedUser = await this.authService.updateUserByAdmin(userId, updateUserDto);
+    const { password, ...userWithoutPassword } = updatedUser;
+    return {
+      message: 'User updated successfully',
+      user: userWithoutPassword,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Delete('users/:id')
+  async deleteUserByAdmin(@Param('id', ParseIntPipe) userId: number) {
+    await this.authService.deleteUserByAdmin(userId);
+    return {
+      message: 'User deleted successfully',
     };
   }
 }
