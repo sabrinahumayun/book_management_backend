@@ -62,13 +62,13 @@ export class FeedbackResponseDto {
   status: FeedbackStatus;
   createdAt: Date;
   updatedAt: Date;
-  user: {
+  user?: {
     id: number;
     firstName: string;
     lastName: string;
     email: string;
   };
-  book: {
+  book?: {
     id: number;
     title: string;
     author: string;
