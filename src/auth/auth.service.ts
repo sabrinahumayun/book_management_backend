@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User, UserRole } from './entities/user.entity';
-import { RegisterDto, LoginDto, AuthResponseDto, UpdateProfileDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, AuthResponseDto, UpdateProfileDto, AdminCreateUserDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -143,6 +143,32 @@ export class AuthService {
 
     // Delete user - cascade will handle related data
     await this.userRepository.remove(user);
+  }
+
+  async createUserByAdmin(createUserDto: AdminCreateUserDto): Promise<User> {
+    const { email, password, firstName, lastName, role, isActive } = createUserDto;
+    
+    // Check if user already exists
+    const existingUser = await this.userRepository.findOne({ where: { email } });
+    if (existingUser) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    // Hash password (use default if not provided)
+    const defaultPassword = password || 'defaultPassword123';
+    const hashedPassword = await bcrypt.hash(defaultPassword, 12);
+
+    // Create new user
+    const user = this.userRepository.create({
+      email,
+      password: hashedPassword,
+      firstName,
+      lastName,
+      role: role || UserRole.USER,
+      isActive: isActive !== undefined ? isActive : true,
+    });
+
+    return this.userRepository.save(user);
   }
 
 }
