@@ -47,11 +47,11 @@ export class FeedbackController {
     };
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Get all visible feedbacks with pagination and filtering' })
-  @ApiResponse({ status: 200, description: 'Feedbacks retrieved successfully', type: PaginatedFeedbackResponseDto })
+  @Get('all-reviews')
+  @ApiOperation({ summary: 'Get all visible reviews with pagination and filtering' })
+  @ApiResponse({ status: 200, description: 'Reviews retrieved successfully', type: PaginatedFeedbackResponseDto })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of feedbacks per page' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of reviews per page' })
   @ApiQuery({ name: 'bookId', required: false, type: Number, description: 'Filter by book ID' })
   @ApiQuery({ name: 'userId', required: false, type: Number, description: 'Filter by user ID' })
   @ApiQuery({ name: 'status', required: false, enum: ['visible', 'hidden'], description: 'Filter by status' })
@@ -74,6 +74,25 @@ export class FeedbackController {
   @ApiQuery({ name: 'status', required: false, enum: ['visible', 'hidden'], description: 'Filter by status' })
   async findAllForAdmin(@Query() queryDto: ListFeedbackQueryDto): Promise<PaginatedFeedbackResponseDto> {
     return this.feedbackService.findAll(queryDto, true);
+  }
+
+  @Get('my-reviews')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get current user\'s reviews' })
+  @ApiResponse({ status: 200, description: 'User reviews retrieved successfully', type: PaginatedFeedbackResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of reviews per page' })
+  @ApiQuery({ name: 'bookId', required: false, type: Number, description: 'Filter by book ID' })
+  @ApiQuery({ name: 'status', required: false, enum: ['visible', 'hidden'], description: 'Filter by status' })
+  async findMyReviews(
+    @Request() req: any,
+    @Query() queryDto: ListFeedbackQueryDto
+  ): Promise<PaginatedFeedbackResponseDto> {
+    // Set the userId to current user's ID
+    queryDto.userId = req.user.id;
+    return this.feedbackService.findAll(queryDto, false);
   }
 
   @Get('book/:bookId')
