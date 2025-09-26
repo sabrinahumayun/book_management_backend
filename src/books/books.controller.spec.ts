@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BooksController } from './books.controller';
 import { BooksService } from './books.service';
 import { CreateBookDto, UpdateBookDto, ListBooksQueryDto } from './dto/books.dto';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 
 describe('BooksController', () => {
   let controller: BooksController;
@@ -11,6 +11,7 @@ describe('BooksController', () => {
   const mockBooksService = {
     create: jest.fn(),
     findAll: jest.fn(),
+    findByUser: jest.fn(),
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
@@ -103,6 +104,38 @@ describe('BooksController', () => {
     });
   });
 
+  describe('findMyBooks', () => {
+    it('should return paginated books for logged in user', async () => {
+      const queryDto: ListBooksQueryDto = { page: 1, limit: 10 };
+      const mockResult = {
+        data: [
+          {
+            id: 1,
+            title: 'My Book 1',
+            author: 'Author 1',
+            isbn: '978-0-123456-78-9',
+            createdBy: 1,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      };
+
+      const mockRequest = { user: { id: 1 } };
+
+      mockBooksService.findByUser.mockResolvedValue(mockResult);
+
+      const result = await controller.findMyBooks(mockRequest, queryDto);
+
+      expect(service.findByUser).toHaveBeenCalledWith(1, queryDto);
+      expect(result).toEqual(mockResult);
+    });
+  });
+
   describe('findOne', () => {
     it('should return a book by id', async () => {
       const mockBook = {
@@ -147,9 +180,9 @@ describe('BooksController', () => {
 
       mockBooksService.update.mockResolvedValue(mockBook);
 
-      const result = await controller.update(1, updateBookDto);
+      const result = await controller.update(1, updateBookDto, { user: { id: 1, role: 'admin' } });
 
-      expect(service.update).toHaveBeenCalledWith(1, updateBookDto);
+      expect(service.update).toHaveBeenCalledWith(1, updateBookDto, 1, 'admin');
       expect(result).toEqual({
         message: 'Book updated successfully',
         book: mockBook,
@@ -161,26 +194,43 @@ describe('BooksController', () => {
 
       mockBooksService.update.mockRejectedValue(new NotFoundException('Book not found'));
 
-      await expect(controller.update(999, updateBookDto)).rejects.toThrow(NotFoundException);
+      await expect(controller.update(999, updateBookDto, { user: { id: 1, role: 'admin' } })).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('remove', () => {
-    it('should delete a book successfully', async () => {
+    it('should delete a book successfully for admin', async () => {
       mockBooksService.remove.mockResolvedValue(undefined);
 
-      const result = await controller.remove(1);
+      const result = await controller.remove(1, { user: { id: 1, role: 'admin' } });
 
-      expect(service.remove).toHaveBeenCalledWith(1);
+      expect(service.remove).toHaveBeenCalledWith(1, 1, 'admin');
       expect(result).toEqual({
         message: 'Book deleted successfully',
       });
     });
 
+    it('should delete own book successfully for user', async () => {
+      mockBooksService.remove.mockResolvedValue(undefined);
+
+      const result = await controller.remove(1, { user: { id: 1, role: 'user' } });
+
+      expect(service.remove).toHaveBeenCalledWith(1, 1, 'user');
+      expect(result).toEqual({
+        message: 'Book deleted successfully',
+      });
+    });
+
+    it('should handle forbidden error', async () => {
+      mockBooksService.remove.mockRejectedValue(new ForbiddenException('You can only delete your own books'));
+
+      await expect(controller.remove(1, { user: { id: 1, role: 'user' } })).rejects.toThrow(ForbiddenException);
+    });
+
     it('should handle not found error', async () => {
       mockBooksService.remove.mockRejectedValue(new NotFoundException('Book not found'));
 
-      await expect(controller.remove(999)).rejects.toThrow(NotFoundException);
+      await expect(controller.remove(999, { user: { id: 1, role: 'admin' } })).rejects.toThrow(NotFoundException);
     });
   });
 });

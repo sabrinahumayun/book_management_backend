@@ -16,7 +16,8 @@ export class CreateBookDto {
 
   @IsString()
   @IsNotEmpty()
-  @IsISBN()
+  @MinLength(10)
+  @MaxLength(17)
   isbn: string;
 }
 
@@ -35,7 +36,8 @@ export class UpdateBookDto {
 
   @IsOptional()
   @IsString()
-  @IsISBN()
+  @MinLength(10)
+  @MaxLength(17)
   isbn?: string;
 }
 

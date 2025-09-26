@@ -44,19 +44,28 @@ export class BooksController {
     return this.booksService.findAll(queryDto);
   }
 
+  @Get('my-books')
+  @UseGuards(JwtAuthGuard)
+  async findMyBooks(
+    @Request() req: any,
+    @Query() queryDto: ListBooksQueryDto
+  ): Promise<PaginatedBooksResponseDto> {
+    return this.booksService.findByUser(req.user.id, queryDto);
+  }
+
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<BookResponseDto> {
     return this.booksService.findOne(id);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN) // Only admin can update books
+  @UseGuards(JwtAuthGuard)
   async update(
     @Param('id', ParseIntPipe) id: number, 
-    @Body() updateBookDto: UpdateBookDto
+    @Body() updateBookDto: UpdateBookDto,
+    @Request() req: any
   ): Promise<{ message: string; book: BookResponseDto }> {
-    const book = await this.booksService.update(id, updateBookDto);
+    const book = await this.booksService.update(id, updateBookDto, req.user.id, req.user.role);
     return {
       message: 'Book updated successfully',
       book,
@@ -64,10 +73,12 @@ export class BooksController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN) // Only admin can delete books
-  async remove(@Param('id', ParseIntPipe) id: number): Promise<{ message: string }> {
-    await this.booksService.remove(id);
+  @UseGuards(JwtAuthGuard)
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: any
+  ): Promise<{ message: string }> {
+    await this.booksService.remove(id, req.user.id, req.user.role);
     return {
       message: 'Book deleted successfully',
     };

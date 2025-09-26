@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, QueryFailedError } from 'typeorm';
 import { Book } from './entities/book.entity';
@@ -67,6 +67,47 @@ export class BooksService {
     };
   }
 
+  async findByUser(userId: number, queryDto: ListBooksQueryDto): Promise<PaginatedBooksResponseDto> {
+    const { page = 1, limit = 10, title, author, isbn } = queryDto;
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.bookRepository
+      .createQueryBuilder('book')
+      .leftJoinAndSelect('book.creator', 'creator')
+      .where('book.createdBy = :userId', { userId });
+
+    // Apply filters
+    if (title) {
+      queryBuilder.andWhere('LOWER(book.title) LIKE LOWER(:title)', { title: `%${title}%` });
+    }
+    if (author) {
+      queryBuilder.andWhere('LOWER(book.author) LIKE LOWER(:author)', { author: `%${author}%` });
+    }
+    if (isbn) {
+      queryBuilder.andWhere('book.isbn = :isbn', { isbn });
+    }
+
+    // Get total count
+    const total = await queryBuilder.getCount();
+
+    // Apply pagination and ordering
+    const books = await queryBuilder
+      .orderBy('book.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getMany();
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: books.map(book => this.mapToResponseDto(book)),
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
   async findOne(id: number): Promise<BookResponseDto> {
     const book = await this.bookRepository.findOne({ 
       where: { id },
@@ -78,13 +119,18 @@ export class BooksService {
     return this.mapToResponseDto(book);
   }
 
-  async update(id: number, updateBookDto: UpdateBookDto): Promise<BookResponseDto> {
+  async update(id: number, updateBookDto: UpdateBookDto, userId: number, userRole: string): Promise<BookResponseDto> {
     const book = await this.bookRepository.findOne({ 
       where: { id },
       relations: ['creator']
     });
     if (!book) {
       throw new NotFoundException(`Book with ID ${id} not found`);
+    }
+
+    // Check if user can update this book (owner or admin)
+    if (userRole !== 'admin' && book.createdBy !== userId) {
+      throw new ForbiddenException('You can only update your own books');
     }
 
     try {
@@ -109,11 +155,17 @@ export class BooksService {
     }
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, userId: number, userRole: string): Promise<void> {
     const book = await this.bookRepository.findOne({ where: { id } });
     if (!book) {
       throw new NotFoundException(`Book with ID ${id} not found`);
     }
+
+    // Check if user can delete this book (owner or admin)
+    if (userRole !== 'admin' && book.createdBy !== userId) {
+      throw new ForbiddenException('You can only delete your own books');
+    }
+
     await this.bookRepository.remove(book);
   }
 

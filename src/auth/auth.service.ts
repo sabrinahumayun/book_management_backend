@@ -87,7 +87,6 @@ export class AuthService {
   }
 
   async validateUserById(id: number): Promise<User | null> {
-    console.log("id", id);
     return this.userRepository.findOne({ where: { id } });
   }
 
