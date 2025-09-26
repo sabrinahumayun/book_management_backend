@@ -50,7 +50,19 @@ export class FeedbackService {
       });
 
       const savedFeedback = await this.feedbackRepository.save(feedback);
-      return this.mapToResponseDto(savedFeedback);
+      
+      // Reload with relations
+      const feedbackWithRelations = await this.feedbackRepository.createQueryBuilder('feedback')
+        .leftJoinAndSelect('feedback.user', 'user')
+        .leftJoinAndSelect('feedback.book', 'book')
+        .where('feedback.id = :id', { id: savedFeedback.id })
+        .getOne();
+      
+      if (!feedbackWithRelations) {
+        throw new Error('Failed to reload feedback with relations');
+      }
+      
+      return this.mapToResponseDto(feedbackWithRelations);
     } catch (error) {
       if (error instanceof QueryFailedError) {
         throw new ConflictException('Failed to create feedback');
@@ -174,18 +186,18 @@ export class FeedbackService {
       status: feedback.status,
       createdAt: feedback.createdAt,
       updatedAt: feedback.updatedAt,
-      user: {
+      user: feedback.user ? {
         id: feedback.user.id,
         firstName: feedback.user.firstName,
         lastName: feedback.user.lastName,
         email: feedback.user.email,
-      },
-      book: {
+      } : undefined,
+      book: feedback.book ? {
         id: feedback.book.id,
         title: feedback.book.title,
         author: feedback.book.author,
         isbn: feedback.book.isbn,
-      },
+      } : undefined,
     };
   }
 }
