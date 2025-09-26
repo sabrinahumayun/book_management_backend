@@ -1,5 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { Exclude } from 'class-transformer';
+import { Feedback } from '../../feedback/entities/feedback.entity';
+import { Book } from '../../books/entities/book.entity';
 
 export enum UserRole {
   ADMIN = 'admin',
@@ -39,6 +41,12 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => Feedback, feedback => feedback.user)
+  feedbacks: Feedback[];
+
+  @OneToMany(() => Book, book => book.creator)
+  books: Book[];
 
   constructor(partial: Partial<User>) {
     Object.assign(this, partial);

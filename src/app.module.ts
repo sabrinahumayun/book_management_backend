@@ -5,6 +5,10 @@ import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { User } from './auth/entities/user.entity';
+import { Book } from './books/entities/book.entity';
+import { Feedback } from './feedback/entities/feedback.entity';
+import { BooksModule } from './books/books.module';
+import { FeedbackModule } from './feedback/feedback.module';
 
 @Module({
   imports: [
@@ -18,10 +22,12 @@ import { User } from './auth/entities/user.entity';
       username: process.env.DB_USERNAME || 'root',
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_DATABASE || 'book_management',
-      entities: [User],
+      entities: [User, Book, Feedback],
       synchronize: true, // Only for development
     }),
     AuthModule,
+    BooksModule,
+    FeedbackModule,
   ],
   controllers: [AppController],
   providers: [AppService],
