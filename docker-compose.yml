@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: book_management_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: book_management
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - book_management_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d book_management"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Book Management Backend API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: book_management_api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: book_management
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - book_management_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Database Seeding Service
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: book_management_seed
+    environment:
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: book_management
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks:
+      - book_management_network
+    command: ["npm", "run", "seed"]
+    profiles:
+      - seed
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  book_management_network:
+    driver: bridge
