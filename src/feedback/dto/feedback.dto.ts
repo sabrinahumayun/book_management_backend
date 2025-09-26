@@ -29,6 +29,23 @@ export class ModerateFeedbackDto {
   status: FeedbackStatus;
 }
 
+export class UpdateFeedbackDto {
+  @ApiPropertyOptional({ example: 5, description: 'Updated rating from 1 to 5 stars', minimum: 1, maximum: 5 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating?: number;
+
+  @ApiPropertyOptional({ example: 'Updated comment: This book is amazing!', description: 'Updated feedback comment', minLength: 1, maxLength: 1000 })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(1)
+  @MaxLength(1000)
+  comment?: string;
+}
+
 export class ListFeedbackQueryDto {
   @ApiPropertyOptional({ example: 1, description: 'Page number', minimum: 1, default: 1 })
   @IsOptional()

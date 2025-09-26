@@ -6,11 +6,12 @@ import { Feedback } from './entities/feedback.entity';
 import { User } from '../auth/entities/user.entity';
 import { Book } from '../books/entities/book.entity';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { FeedbackThrottlerGuard } from './feedback-throttler.guard';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Feedback, User, Book])],
   controllers: [FeedbackController],
-  providers: [FeedbackService, RolesGuard],
+  providers: [FeedbackService, RolesGuard, FeedbackThrottlerGuard],
   exports: [FeedbackService],
 })
 export class FeedbackModule {}
