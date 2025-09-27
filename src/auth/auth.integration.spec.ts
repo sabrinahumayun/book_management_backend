@@ -10,6 +10,8 @@ import * as request from 'supertest';
 import { AuthModule } from './auth.module';
 import { AuthService } from './auth.service';
 import { User, UserRole } from './entities/user.entity';
+import { Book } from '../books/entities/book.entity';
+import { Feedback } from '../feedback/entities/feedback.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { RolesGuard } from './guards/roles.guard';
@@ -32,7 +34,7 @@ describe('Auth Integration Tests', () => {
           username: process.env.DB_USERNAME || 'postgres',
           password: process.env.DB_PASSWORD || 'postgres',
           database: process.env.DB_DATABASE || 'book_management_test',
-          entities: [User],
+          entities: [User, Book, Feedback],
           synchronize: true,
           logging: false,
         }),
@@ -41,6 +43,15 @@ describe('Auth Integration Tests', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Set global prefix
+    app.setGlobalPrefix('api');
+    
+    // Enable CORS
+    app.enableCors({
+      origin: 'http://localhost:3000',
+      credentials: true,
+    });
     
     // Enable validation pipes
     app.useGlobalPipes(new ValidationPipe({
@@ -51,7 +62,14 @@ describe('Auth Integration Tests', () => {
     
     authService = moduleFixture.get<AuthService>(AuthService);
     userRepository = moduleFixture.get<Repository<User>>(getRepositoryToken(User));
-    await app.init();
+    
+    try {
+      await app.init();
+      console.log('App initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize app:', error);
+      throw error;
+    }
   });
 
   afterAll(async () => {
@@ -61,13 +79,11 @@ describe('Auth Integration Tests', () => {
   beforeEach(async () => {
     // Clean up database before each test
     try {
-      await userRepository.clear();
+      // Delete all records and reset sequences
+      await userRepository.query('DELETE FROM users');
+      await userRepository.query('ALTER SEQUENCE users_id_seq RESTART WITH 1');
     } catch (error) {
-      // Fallback: delete all users
-      const users = await userRepository.find();
-      if (users.length > 0) {
-        await userRepository.remove(users);
-      }
+      console.warn('Database cleanup warning:', error.message);
     }
   });
 

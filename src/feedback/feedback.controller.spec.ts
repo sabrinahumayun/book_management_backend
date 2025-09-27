@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { FeedbackController } from './feedback.controller';
 import { FeedbackService } from './feedback.service';
+import { FeedbackThrottlerGuard } from './feedback-throttler.guard';
 import { CreateFeedbackDto, ModerateFeedbackDto, ListFeedbackQueryDto } from './dto/feedback.dto';
 import { FeedbackStatus } from './entities/feedback.entity';
 import { ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
@@ -20,11 +22,26 @@ describe('FeedbackController', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      imports: [
+        ThrottlerModule.forRoot([
+          {
+            name: 'short',
+            ttl: 1000,
+            limit: 10,
+          },
+        ]),
+      ],
       controllers: [FeedbackController],
       providers: [
         {
           provide: FeedbackService,
           useValue: mockFeedbackService,
+        },
+        {
+          provide: FeedbackThrottlerGuard,
+          useValue: {
+            canActivate: jest.fn().mockReturnValue(true),
+          },
         },
       ],
     }).compile();
