@@ -11,6 +11,7 @@ import { Book } from './books/entities/book.entity';
 import { Feedback } from './feedback/entities/feedback.entity';
 import { BooksModule } from './books/books.module';
 import { FeedbackModule } from './feedback/feedback.module';
+import { HealthModule } from './health/health.module';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 
 @Module({
@@ -48,6 +49,7 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
     AuthModule,
     BooksModule,
     FeedbackModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [

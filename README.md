@@ -1,85 +1,241 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 📚 Book Management Portal - Backend API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A comprehensive NestJS-based backend API for managing books, user authentication, and feedback systems.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+[![NestJS](https://img.shields.io/badge/NestJS-10.0.0-red.svg)](https://nestjs.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.1.3-blue.svg)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-8.16.3-blue.svg)](https://www.postgresql.org/)
+[![JWT](https://img.shields.io/badge/JWT-Authentication-green.svg)](https://jwt.io/)
+[![Swagger](https://img.shields.io/badge/Swagger-API%20Docs-green.svg)](https://swagger.io/)
 
-## Description
+## 🚀 Quick Start
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Prerequisites
+- **Node.js** (v18 or higher)
+- **PostgreSQL** (v12 or higher)
+- **npm** or **yarn**
 
-## Project setup
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd book_management_backend
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Environment setup**
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Configure your `.env` file:
+   ```env
+   # Database Configuration
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_USERNAME=your_username
+   DB_PASSWORD=your_password
+   DB_DATABASE=book_management
+   
+   # JWT Configuration
+   JWT_SECRET=your-super-secret-jwt-key
+   
+   # Application Configuration
+   NODE_ENV=development
+   PORT=3001
+   ```
+
+4. **Database setup**
+   ```bash
+   # Create PostgreSQL database
+   createdb book_management
+   
+   # The application will automatically create tables on first run
+   # (synchronize: true in development mode)
+   ```
+
+5. **Start the application**
+   ```bash
+   # Development mode
+   npm run start:dev
+   
+   # Production mode
+   npm run build
+   npm run start:prod
+   ```
+
+6. **Access the application**
+   - **API Base URL**: `http://localhost:3001/api`
+   - **Swagger Documentation**: `http://localhost:3001/api/docs`
+
+## 🌱 Database Seeding
+
+### Seed the Database with Test Data
+
+The application includes comprehensive test data for development and testing:
 
 ```bash
-$ npm install
+# Quick seeding
+npm run seed
+
+# Using shell script (with confirmation)
+./scripts/seed.sh
+
+# Direct TypeScript execution
+npx ts-node -r tsconfig-paths/register scripts/seed-database.ts
 ```
 
-## Compile and run the project
+### What Gets Seeded
+
+- **19 Users**: 2 Admins, 14 Regular Users, 2 Suspended Users
+- **40+ Books**: Classic literature, fantasy, sci-fi, modern fiction, mystery, romance, biography, self-help, children's books, philosophy
+- **50+ Feedback**: Diverse ratings (1-5 stars) with realistic comments
+
+### Sample Data
+
+#### Admin Users
+- `admin@bookportal.com` / `admin123`
+- `superadmin@bookportal.com` / `admin123`
+
+#### Regular Users
+- `john.doe@example.com` / `password123`
+- `jane.smith@example.com` / `password123`
+- And 12 more users...
+
+#### Suspended Users
+- `suspended@example.com` / `password123`
+- `banned.user@example.com` / `password123`
+
+### Data Relationships
+
+- **User-Book Relationships**: Books are linked to their creators
+- **User-Feedback Relationships**: Feedback is linked to reviewers  
+- **Book-Feedback Relationships**: Feedback is linked to specific books
+- **Cascade Operations**: Deleting users/books removes related feedback
+- **Foreign Key Integrity**: All relationships maintain referential integrity
+
+## 🧪 Testing
+
+### Running Tests
 
 ```bash
-# development
-$ npm run start
+# Run all tests
+npm test
 
-# watch mode
-$ npm run start:dev
+# Run unit tests only
+npm run test:unit
 
-# production mode
-$ npm run start:prod
+# Run integration tests only
+npm run test:integration
+
+# Run tests with coverage
+npm run test:cov
+
+# Run tests in watch mode
+npm run test:watch
 ```
 
-## Run tests
+### Test Structure
+
+- **Unit Tests**: Test individual services and controllers in isolation
+- **Integration Tests**: Test complete API endpoints with database interactions
+- **Test Coverage**: Comprehensive coverage reporting for all modules
+
+## 📚 API Documentation
+
+### Swagger Integration
+
+The API includes comprehensive Swagger documentation accessible at `/api/docs`:
+
+- **Interactive API explorer**
+- **Request/Response examples**
+- **Authentication testing**
+- **Schema definitions**
+- **Error response documentation**
+
+### Key Endpoints
+
+#### Authentication (`/api/auth`)
+- `POST /register` - Register new user
+- `POST /login` - User login
+- `GET /profile` - Get user profile
+- `PUT /profile` - Update user profile
+- `GET /users` - Get all users (Admin only)
+- `POST /users` - Create user (Admin only)
+- `PATCH /users/:id` - Update user (Admin only)
+- `DELETE /users/:id` - Delete user (Admin only)
+
+#### Books (`/api/books`)
+- `POST /` - Create book
+- `GET /` - Get all books (paginated)
+- `GET /my-books` - Get user's books
+- `GET /:id` - Get book by ID
+- `PATCH /:id` - Update book
+- `DELETE /:id` - Delete book
+
+#### Feedback (`/api/feedback`)
+- `POST /` - Create feedback (rate limited: 1/min)
+- `GET /all-reviews` - Get all visible reviews
+- `GET /my-reviews` - Get user's reviews
+- `GET /book/:bookId` - Get book feedback
+- `PATCH /:id` - Update feedback
+- `DELETE /:id` - Delete feedback
+
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `DB_HOST` | Database host | localhost | ✅ |
+| `DB_PORT` | Database port | 5432 | ✅ |
+| `DB_USERNAME` | Database username | root | ✅ |
+| `DB_PASSWORD` | Database password | - | ✅ |
+| `DB_DATABASE` | Database name | book_management | ✅ |
+| `JWT_SECRET` | JWT signing secret | - | ✅ |
+| `NODE_ENV` | Environment | development | ❌ |
+| `PORT` | Application port | 3001 | ❌ |
+
+## 🐳 Docker Support
+
+### Development with Docker
 
 ```bash
-# unit tests
-$ npm run test
+# Start development environment
+npm run docker:up
 
-# e2e tests
-$ npm run test:e2e
+# View logs
+npm run docker:logs
 
-# test coverage
-$ npm run test:cov
+# Stop environment
+npm run docker:down
 ```
 
-## Resources
+### Production with Docker
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+# Start production environment
+npm run docker:prod
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# Stop production environment
+npm run docker:prod:down
+```
 
-## Support
+## 📝 License
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+This project is licensed under the MIT License.
 
-## Stay in touch
+## 🆘 Support
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+For support and questions:
 
-## License
+- **Documentation**: Check the Swagger docs at `/api/docs`
+- **Issues**: Create an issue in the repository
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+---
+
