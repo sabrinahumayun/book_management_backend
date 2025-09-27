@@ -14,11 +14,17 @@ describe('FeedbackService', () => {
   let userRepository: Repository<User>;
   let bookRepository: Repository<Book>;
 
+  const mockQueryBuilder = {
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    getOne: jest.fn(),
+  };
+
   const mockFeedbackRepository = {
     create: jest.fn(),
     save: jest.fn(),
     findOne: jest.fn(),
-    createQueryBuilder: jest.fn(),
+    createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
     remove: jest.fn(),
   };
 
@@ -87,6 +93,7 @@ describe('FeedbackService', () => {
       mockFeedbackRepository.findOne.mockResolvedValue(null); // No existing feedback
       mockFeedbackRepository.create.mockReturnValue(mockFeedback);
       mockFeedbackRepository.save.mockResolvedValue(mockFeedback);
+      mockQueryBuilder.getOne.mockResolvedValue(mockFeedback);
 
       const result = await service.create(createFeedbackDto, 1);
 

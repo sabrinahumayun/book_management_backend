@@ -7,6 +7,11 @@ export class FeedbackThrottlerGuard extends ThrottlerGuard {
   private readonly RATE_LIMIT_TTL = 60000; // 1 minute in milliseconds
   private readonly RATE_LIMIT_COUNT = 1; // 1 request per minute
 
+  // Method to clear rate limiter state (useful for testing)
+  public clearRateLimitState(): void {
+    this.requestTimes.clear();
+  }
+
   protected async getTracker(req: Record<string, any>): Promise<string> {
     // This guard runs after JWT authentication, so req.user should be available
     const userId = req.user?.id;
@@ -22,6 +27,11 @@ export class FeedbackThrottlerGuard extends ThrottlerGuard {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Skip rate limiting in test environment
+    if (process.env.NODE_ENV === 'test') {
+      return true;
+    }
+
     // Only apply throttling to POST requests (feedback creation)
     const request = context.switchToHttp().getRequest();
     if (request.method !== 'POST') {

@@ -176,6 +176,7 @@ describe('AuthService', () => {
         firstName: 'John',
         lastName: 'Doe',
         role: UserRole.USER,
+        isActive: true,
       } as User;
 
       mockUserRepository.findOne.mockResolvedValue(user);
