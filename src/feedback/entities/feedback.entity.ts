@@ -6,7 +6,6 @@ export enum FeedbackStatus {
   VISIBLE = 'visible',
   HIDDEN = 'hidden',
 }
-
 @Entity('feedbacks')
 export class Feedback {
   @PrimaryGeneratedColumn()
@@ -19,8 +18,8 @@ export class Feedback {
   comment: string;
 
   @Column({
-    type: 'enum',
-    enum: FeedbackStatus,
+    type: 'varchar',
+    length: 20,
     default: FeedbackStatus.VISIBLE,
   })
   status: FeedbackStatus;
@@ -31,14 +30,14 @@ export class Feedback {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @ManyToOne(() => User, user => user.feedbacks, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.feedbacks, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user: User;
 
   @Column()
   userId: number;
 
-  @ManyToOne(() => Book, book => book.feedbacks, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Book, (book) => book.feedbacks, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'bookId' })
   book: Book;
 
