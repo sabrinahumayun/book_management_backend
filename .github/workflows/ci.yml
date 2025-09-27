@@ -1,0 +1,28 @@
+name: CI - NestJS
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v3
+
+      - name: 📦 Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.15' # Or your preferred version
+          cache: 'npm' # Or 'pnpm' or 'yarn' if using that
+
+      - name: 📥 Install dependencies
+        run: npm ci # Use `pnpm install` if you're using pnpm
+
+      - name: 🧪 Run tests
+        run: npm run test

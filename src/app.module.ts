@@ -37,14 +37,18 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
       },
     ]),
     TypeOrmModule.forRoot({
-      type: 'postgres',
+      type: 'mssql',
       host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5432'),
-      username: process.env.DB_USERNAME || 'root',
-      password: process.env.DB_PASSWORD || '',
+      port: parseInt(process.env.DB_PORT || '1433'),
+      username: process.env.DB_USERNAME || 'sa',
+      password: process.env.DB_PASSWORD || 'yourStrong(!)Password',
       database: process.env.DB_DATABASE || 'book_management',
       entities: [User, Book, Feedback],
       synchronize: true, // Only for development
+      options: {
+        encrypt: false, // Set to true if using Azure SQL or secure connections
+        enableArithAbort: true,
+      },
     }),
     AuthModule,
     BooksModule,

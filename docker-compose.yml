@@ -1,27 +1,34 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
+  # SQL Server Database
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64   # ✅ Add this line
     container_name: book_management_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: book_management
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "YourStrong(!)Password123"  # Must be strong
+      MSSQL_PID: "Express"
     ports:
-      - "5432:5432"
+      - "1433:1433"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - sqlserver_data:/var/opt/mssql
     networks:
       - book_management_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d book_management"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    
+  init-mssql:
+    image: mcr.microsoft.com/mssql-tools
+    platform: linux/amd64
+    depends_on: [sqlserver]
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P 'YourStrong(!)Password123' -Q "IF DB_ID('book_management') IS NULL CREATE DATABASE [book_management];"
+    networks:
+      - book_management_network
+
 
   # Book Management Backend API
   api:
@@ -35,26 +42,18 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3001
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
+      DB_HOST: sqlserver
+      DB_PORT: 1433
+      DB_USERNAME: sa
+      DB_PASSWORD: YourStrong(!)Password123
       DB_DATABASE: book_management
       JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
     volumes:
       - .:/app
       - /app/node_modules
-    depends_on:
-      postgres:
-        condition: service_healthy
+    depends_on: [sqlserver]
     networks:
       - book_management_network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3001/api/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   # Database Seeding Service
   seed:
@@ -64,17 +63,13 @@ services:
     container_name: book_management_seed
     environment:
       NODE_ENV: development
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
+      DB_HOST: sqlserver
+      DB_PORT: 1433
+      DB_USERNAME: sa
+      DB_PASSWORD: YourStrong(!)Password123
       DB_DATABASE: book_management
       JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
-    depends_on:
-      postgres:
-        condition: service_healthy
-      api:
-        condition: service_healthy
+    depends_on: [sqlserver api]
     networks:
       - book_management_network
     command: ["npm", "run", "seed"]
@@ -82,7 +77,7 @@ services:
       - seed
 
 volumes:
-  postgres_data:
+  sqlserver_data:
     driver: local
 
 networks:
