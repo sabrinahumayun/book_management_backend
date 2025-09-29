@@ -2,7 +2,8 @@ import { Injectable, NotFoundException, ConflictException, ForbiddenException } 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, QueryFailedError } from 'typeorm';
 import { Book } from './entities/book.entity';
-import { CreateBookDto, UpdateBookDto, ListBooksQueryDto, PaginatedBooksResponseDto, BookResponseDto } from './dto/books.dto';
+import { CreateBookDto, UpdateBookDto, ListBooksQueryDto, PaginatedBooksResponseDto, BookResponseDto, BulkDeleteBooksDto } from './dto/books.dto';
+import { BulkDeleteResponseDto } from '../auth/dto/auth.dto';
 
 @Injectable()
 export class BooksService {
@@ -184,6 +185,57 @@ export class BooksService {
         lastName: book.creator.lastName,
         email: book.creator.email,
       } : undefined,
+    };
+  }
+
+  async bulkDeleteBooks(bulkDeleteDto: BulkDeleteBooksDto, userId: number, userRole: string): Promise<BulkDeleteResponseDto> {
+    const { bookIds } = bulkDeleteDto;
+    const deletedIds: number[] = [];
+    const failedIds: number[] = [];
+
+    // Use transaction for bulk operations
+    const queryRunner = this.bookRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const bookId of bookIds) {
+        try {
+          const book = await queryRunner.manager.findOne(Book, { 
+            where: { id: bookId },
+            relations: ['creator']
+          });
+          
+          if (book) {
+            // Check ownership (users can only delete their own books, admins can delete any)
+            if (userRole !== 'admin' && book.createdBy !== userId) {
+              failedIds.push(bookId);
+              continue;
+            }
+
+            await queryRunner.manager.remove(Book, book);
+            deletedIds.push(bookId);
+          } else {
+            failedIds.push(bookId);
+          }
+        } catch (error) {
+          failedIds.push(bookId);
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+
+    return {
+      deletedCount: deletedIds.length,
+      deletedIds,
+      failedIds,
+      message: `Bulk delete completed. ${deletedIds.length} books deleted, ${failedIds.length} failed.`,
     };
   }
 }

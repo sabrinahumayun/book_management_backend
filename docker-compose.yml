@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # SQL Server Database
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64   # ✅ Add this line
+    container_name: book_management_db
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "YourStrong(!)Password123"  # Must be strong
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - book_management_network
+    
+  init-mssql:
+    image: mcr.microsoft.com/mssql-tools
+    platform: linux/amd64
+    depends_on: [sqlserver]
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P 'YourStrong(!)Password123' -Q "IF DB_ID('book_management') IS NULL CREATE DATABASE [book_management];"
+    networks:
+      - book_management_network
+
+
+  # Book Management Backend API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: book_management_api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DB_HOST: sqlserver
+      DB_PORT: 1433
+      DB_USERNAME: sa
+      DB_PASSWORD: YourStrong(!)Password123
+      DB_DATABASE: book_management
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on: [sqlserver]
+    networks:
+      - book_management_network
+
+  # Database Seeding Service
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: book_management_seed
+    environment:
+      NODE_ENV: development
+      DB_HOST: sqlserver
+      DB_PORT: 1433
+      DB_USERNAME: sa
+      DB_PASSWORD: YourStrong(!)Password123
+      DB_DATABASE: book_management
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+    depends_on: [sqlserver api]
+    networks:
+      - book_management_network
+    command: ["npm", "run", "seed"]
+    profiles:
+      - seed
+
+volumes:
+  sqlserver_data:
+    driver: local
+
+networks:
+  book_management_network:
+    driver: bridge

@@ -4,7 +4,8 @@ import { Repository, QueryFailedError } from 'typeorm';
 import { Feedback, FeedbackStatus } from './entities/feedback.entity';
 import { User } from '../auth/entities/user.entity';
 import { Book } from '../books/entities/book.entity';
-import { CreateFeedbackDto, ModerateFeedbackDto, ListFeedbackQueryDto, PaginatedFeedbackResponseDto, FeedbackResponseDto } from './dto/feedback.dto';
+import { CreateFeedbackDto, ModerateFeedbackDto, UpdateFeedbackDto, ListFeedbackQueryDto, PaginatedFeedbackResponseDto, FeedbackResponseDto, BulkDeleteFeedbackDto } from './dto/feedback.dto';
+import { BulkDeleteResponseDto } from '../auth/dto/auth.dto';
 
 @Injectable()
 export class FeedbackService {
@@ -50,7 +51,19 @@ export class FeedbackService {
       });
 
       const savedFeedback = await this.feedbackRepository.save(feedback);
-      return this.mapToResponseDto(savedFeedback);
+      
+      // Reload with relations
+      const feedbackWithRelations = await this.feedbackRepository.createQueryBuilder('feedback')
+        .leftJoinAndSelect('feedback.user', 'user')
+        .leftJoinAndSelect('feedback.book', 'book')
+        .where('feedback.id = :id', { id: savedFeedback.id })
+        .getOne();
+      
+      if (!feedbackWithRelations) {
+        throw new Error('Failed to reload feedback with relations');
+      }
+      
+      return this.mapToResponseDto(feedbackWithRelations);
     } catch (error) {
       if (error instanceof QueryFailedError) {
         throw new ConflictException('Failed to create feedback');
@@ -138,6 +151,34 @@ export class FeedbackService {
     return this.mapToResponseDto(updatedFeedback);
   }
 
+  async update(id: number, updateFeedbackDto: UpdateFeedbackDto, userId: number, isAdmin: boolean = false): Promise<FeedbackResponseDto> {
+    const feedback = await this.feedbackRepository.findOne({
+      where: { id },
+      relations: ['user', 'book'],
+    });
+
+    if (!feedback) {
+      throw new NotFoundException(`Feedback with ID ${id} not found`);
+    }
+
+    // Only allow users to update their own feedback or admins to update any feedback
+    if (!isAdmin && feedback.userId !== userId) {
+      throw new ForbiddenException('You can only update your own feedback');
+    }
+
+    // Update only provided fields
+    if (updateFeedbackDto.rating !== undefined) {
+      feedback.rating = updateFeedbackDto.rating;
+    }
+    if (updateFeedbackDto.comment !== undefined) {
+      feedback.comment = updateFeedbackDto.comment;
+    }
+
+    const updatedFeedback = await this.feedbackRepository.save(feedback);
+
+    return this.mapToResponseDto(updatedFeedback);
+  }
+
   async remove(id: number, userId: number, isAdmin: boolean = false): Promise<void> {
     const feedback = await this.feedbackRepository.findOne({
       where: { id },
@@ -174,18 +215,69 @@ export class FeedbackService {
       status: feedback.status,
       createdAt: feedback.createdAt,
       updatedAt: feedback.updatedAt,
-      user: {
+      user: feedback.user ? {
         id: feedback.user.id,
         firstName: feedback.user.firstName,
         lastName: feedback.user.lastName,
         email: feedback.user.email,
-      },
-      book: {
+      } : undefined,
+      book: feedback.book ? {
         id: feedback.book.id,
         title: feedback.book.title,
         author: feedback.book.author,
         isbn: feedback.book.isbn,
-      },
+      } : undefined,
+    };
+  }
+
+  async bulkDeleteFeedback(bulkDeleteDto: BulkDeleteFeedbackDto, userId: number, isAdmin: boolean = false): Promise<BulkDeleteResponseDto> {
+    const { feedbackIds } = bulkDeleteDto;
+    const deletedIds: number[] = [];
+    const failedIds: number[] = [];
+
+    // Use transaction for bulk operations
+    const queryRunner = this.feedbackRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const feedbackId of feedbackIds) {
+        try {
+          const feedback = await queryRunner.manager.findOne(Feedback, { 
+            where: { id: feedbackId },
+            relations: ['user']
+          });
+          
+          if (feedback) {
+            // Check ownership (users can only delete their own feedback, admins can delete any)
+            if (!isAdmin && feedback.userId !== userId) {
+              failedIds.push(feedbackId);
+              continue;
+            }
+
+            await queryRunner.manager.remove(Feedback, feedback);
+            deletedIds.push(feedbackId);
+          } else {
+            failedIds.push(feedbackId);
+          }
+        } catch (error) {
+          failedIds.push(feedbackId);
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+
+    return {
+      deletedCount: deletedIds.length,
+      deletedIds,
+      failedIds,
+      message: `Bulk delete completed. ${deletedIds.length} feedback deleted, ${failedIds.length} failed.`,
     };
   }
 }
